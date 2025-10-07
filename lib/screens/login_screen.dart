@@ -19,6 +19,27 @@ class _LoginScreenState extends State<LoginScreen> {
   SMIBool? trigSuccess; // Se emociona
   SMIBool? trigFail; // Se pone sad
 
+  // 1) FocusNode
+  final emailFocus = FocusNode();
+  final passFocus = FocusNode();
+
+  // 2) Listeners (Oyentes/Chismoso)
+
+  @override
+  void initState() {
+    super.initState();
+    emailFocus.addListener(() {
+      if (emailFocus.hasFocus) {
+        // Manos abajos en email
+        isHandsUp?.change(false);
+      }
+    });
+    passFocus.addListener(() {
+      // Manos arriba en password
+      isHandsUp?.change(passFocus.hasFocus);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     // Consulta el tamaño de la pantalla del dispositivo
@@ -36,8 +57,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 height: 200,
                 child: RiveAnimation.asset(
                   "assets/animated_login_character.riv",
+                  // Controla las animaciones, es decir, los que estan definidos
                   stateMachines: ["Login Machine"],
-                  // Al iniciarse
+                  // Al iniciarse, permite usar despues las animaciones, es como un controlador
                   onInit: (artboard) {
                     controller = StateMachineController.fromArtboard(
                       artboard,
@@ -57,10 +79,12 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 10),
               // Campo de texto del email
               TextField(
+                // Para llamar a los oyentes, asignar el focusNode al Textfield
+                focusNode: emailFocus,
                 onChanged: (value) {
                   if (isHandsUp != null) {
                     // No tapar los ojos al escribir email
-                    isHandsUp!.change(false);
+                    // isHandsUp!.change(false);
                   }
                   if (isChecking == null) return;
                   // Activa el modo chismoso
@@ -80,10 +104,11 @@ class _LoginScreenState extends State<LoginScreen> {
               // Campo de texto de password
               const SizedBox(height: 10),
               TextField(
+                focusNode: passFocus,
                 onChanged: (value) {
                   if (isChecking != null) {
                     // No activar el modo chismoso al escribir el password
-                    isChecking!.change(false);
+                    // isChecking!.change(false);
                   }
                   if (isHandsUp == null) return;
                   // Activa el modo chismoso
@@ -112,7 +137,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-              // Texto "Olvide contraseña"
+              // Texto "Olvide Contraseña"
               const SizedBox(height: 10),
               SizedBox(
                 width: size.width,
@@ -125,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               // Botón de login
               const SizedBox(height: 10),
-              // Botón estilo Androir
+              // Botón estilo Android
               MaterialButton(
                 minWidth: size.width,
                 height: 50,
@@ -167,5 +192,13 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
     );
+  }
+
+  // 4) Liberación de recursos / Limpieza de focus
+  @override
+  void dispose() {
+    emailFocus.dispose();
+    passFocus.dispose();
+    super.dispose();
   }
 }
