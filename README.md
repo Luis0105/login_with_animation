@@ -1,17 +1,21 @@
 # 🧸 Remix of Login Machine
 
-Este proyecto en Flutter presenta una pantalla de inicio de sesión interactiva con un personaje animado en Rive que reacciona a las acciones del usuario. El personaje observa mientras se escribe el correo, se cubre los ojos al escribir la contraseña y muestra animaciones de éxito o error al iniciar sesión, a su vez, sigue con la mirada al momento de escribir y tiene un tiempo de reacción para cuando se deja de escribir, se usaron varios widgets, en la cual se estudiaron anteriormente para poder implementarlos de manera correcta, algunas funcionalidades mencionadas anteriormente son: 
+Este proyecto en Flutter presenta una pantalla de inicio de sesión interactiva y animada, protagonizada por un personaje en Rive que reacciona dinámicamente a las acciones del usuario. El personaje observa mientras se escribe el correo, se cubre los ojos al ingresar la contraseña y muestra animaciones de éxito o error según el resultado del inicio de sesión.
 
-👀 El personaje sigue el movimiento de los ojos según lo que el usuario escribe
+Además, el personaje sigue con la mirada el texto escrito y cuenta con un tiempo de reacción natural cuando el usuario deja de escribir. Para lograrlo, se emplearon múltiples widgets estudiados previamente e integrados de forma correcta.
 
-🙈 Se tapa los ojos al ingresar la contraseña
+✨ Principales funcionalidades:
 
-✅ Muestra animación de éxito si los datos son correctos
+👀 Seguimiento ocular del personaje según el texto ingresado
 
-❌ Muestra animación de error si los datos son incorrectos
+🙈 Animación de cubrirse los ojos al escribir la contraseña
+
+✅ Animación de éxito cuando las credenciales son correctas
+
+❌ Animación de error cuando las credenciales son incorrectas
 
 🔄 Reacciones en tiempo real gracias a la State Machine de Rive
 
-🧭 Diseño adaptable a distintos tamaños de pantalla
+🧭 Diseño adaptable a diferentes tamaños de pantalla
 
 ## 🎨 ¿Qué es Rive?
