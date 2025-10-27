@@ -13,11 +13,13 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   // Declaramos las variables necesarias
   late TextEditingController _userPasswordController;
+  // 5: Variable que indica si el bóton esta cargando o no
+  bool _isLoading = false;
   bool _passwordVisible = false;
   // Cerebro de la lógica de las animaciones
   StateMachineController? controller;
   // SMI State Machine Input
-  SMIBool? isCheking;
+  SMIBool? isChecking;
   SMIBool? isHandsUp;
   SMITrigger? trigFail;
   SMITrigger? trigSuccess;
@@ -35,6 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
   //4.2 Errores para mostrar en la UI
   String? emailError;
   String? passwordError;
+
   //4.3 Validadores
   bool isValidEmail(String email) {
     // Expresiones regulares
@@ -42,24 +45,38 @@ class _LoginScreenState extends State<LoginScreen> {
     return emailRegex.hasMatch(email);
   }
 
-  bool isValidPassword(String password) {
-    // mínimo 8, una mayúscula, una minúscula, un dígito y un especial
-    final passwordRegex = RegExp(
-      r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$',
-    );
-    return passwordRegex.hasMatch(password);
+  // Valida la contraseña usando el checklist visual
+  String? validedpassword(String password) {
+    if (password.isEmpty) return 'Campo vacío';
+    if (password.length < 8) return 'Debe tener al menos 8 caracteres';
+    if (!password.contains(RegExp(r'[A-Z]')))
+      return 'Debe incluir una mayúscula';
+    if (!password.contains(RegExp(r'[a-z]')))
+      return 'Debe incluir una minúscula';
+    if (!password.contains(RegExp(r'[0-9]'))) return 'Debe incluir un número';
+    if (!password.contains(RegExp(r'[^A-Za-z0-9]')))
+      return 'Debe incluir un carácter especial';
+    return null;
   }
 
   // 4.4 accion al boton login
-  void _onlogin() {
+  void _onlogin() async {
+    if (_isLoading) return; // Evita spam o doble tap
+
+    setState(() {
+      _isLoading = true; // Activa el círculo de carga
+    });
+
     final email = emailController.text.trim();
     final password = passwordController.text;
 
     // Recalcular errores
-    final eError = isValidEmail(email) ? null : 'Email no válido';
-    final pError = isValidPassword(password)
-        ? null
-        : 'Mínimo 8 caracteres, una mayúscula, una minúscula, un número y un especial';
+    final eError = email.isEmpty // Si la cadena esta vacia
+        ? 'Campo vacio'
+        : (!isValidEmail(email) ? 'Email inválido' : null);
+
+    final pError = validedpassword(password);
+
     // para avisar que hubo un cambio
     setState(() {
       emailError = eError;
@@ -67,10 +84,12 @@ class _LoginScreenState extends State<LoginScreen> {
     });
     // 4.5 Cerrar el teclado y bajas
     FocusScope.of(context).unfocus();
-    _typingDebouncer?.cancel();
-    isCheking?.change(false);
+    isChecking?.change(false);
     isHandsUp?.change(false);
     numLook?.value = 50.0; // Mirada neutral
+
+    // Espera un mini delay
+    await Future.delayed(const Duration(seconds: 1));
 
     // 4.7 Activar Triggers
     if (eError == null && pError == null) {
@@ -78,6 +97,13 @@ class _LoginScreenState extends State<LoginScreen> {
     } else {
       trigFail?.fire();
     }
+
+    // Mantener el spinner visible por ~1 s
+    await Future.delayed(const Duration(seconds: 1));
+
+    setState(() {
+      _isLoading = false; // Se apaga el estado de carga
+    });
   }
 
   // Listeners oyentes
@@ -97,6 +123,11 @@ class _LoginScreenState extends State<LoginScreen> {
     });
     passwordFocus.addListener(() {
       isHandsUp?.change(passwordFocus.hasFocus); //manos arriba password
+    });
+
+    // 🔹 Nuevo: actualizar en vivo el checklist al escribir contraseña
+    passwordController.addListener(() {
+      setState(() {}); // Redibuja cada vez que cambia el texto
     });
   }
 
@@ -124,7 +155,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     // Verificar que inició bien
                     if (controller == null) return;
                     artboard.addController(controller!);
-                    isCheking = controller!.findSMI('isChecking');
+                    isChecking = controller!.findSMI('isChecking');
                     isHandsUp = controller!.findSMI('isHandsUp');
                     trigSuccess = controller!.findSMI('trigSuccess');
                     trigFail = controller!.findSMI('trigFail');
@@ -143,7 +174,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 controller: emailController,
                 onChanged: (value) {
                   // estoy escribiendo
-                  isCheking!.change(true);
+                  isChecking!.change(true);
                   // ajuste de limite 0 a 100
                   // 80 es medida de calibración
                   final look =
@@ -151,19 +182,19 @@ class _LoginScreenState extends State<LoginScreen> {
                   numLook?.value = look;
                   // Paso 3.3 Debounce: si vuelve a teclear, reinicia el timer
                   _typingDebouncer?.cancel(); // cancela un timer existente
-                  _typingDebouncer = Timer(const Duration(seconds: 4), () {
+                  _typingDebouncer = Timer(const Duration(seconds: 2), () {
                     if (!mounted) {
                       return; // si la pantalla se cierra
                     }
 
                     // Mirada neutral al dejar de teclear email
-                    isCheking?.change(false);
+                    isChecking?.change(false);
                   });
 
-                  if (isCheking == null) return;
+                  if (isChecking == null) return;
                   // Activa el modo chismoso
 
-                  isCheking!.change(true);
+                  isChecking!.change(true);
                 },
                 textInputAction: TextInputAction.next,
 
@@ -185,15 +216,21 @@ class _LoginScreenState extends State<LoginScreen> {
                 focusNode: passwordFocus,
                 controller: passwordController,
                 onChanged: (value) {
-                  if (isCheking != null) {
-                    // No tapar los ojos al escribir mail
+                  if (isChecking != null) {
+                    // No tapar los ojos al escribir email
                     //isHandsUp!.change(false);
                   }
                   if (isHandsUp == null) return;
                   // Activa el modo chismoso
                   isHandsUp!.change(true);
+
+                  // Si deja de escribir, bajar manos después de 2 s
+                  _typingDebouncer?.cancel();
+                  _typingDebouncer = Timer(const Duration(seconds: 2), () {
+                    if (!mounted) return;
+                    isHandsUp!.change(false);
+                  });
                 },
-                //controller: _userPasswordController,
                 obscureText: !_passwordVisible,
                 decoration: InputDecoration(
                   errorText: passwordError,
@@ -206,8 +243,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   suffixIcon: IconButton(
                     icon: Icon(
                       _passwordVisible
-                          ? Icons.visibility_off
-                          : Icons.visibility,
+                          ? Icons.visibility
+                          : Icons.visibility_off,
                       color: Colors.grey,
                     ),
                     onPressed: () {
@@ -218,6 +255,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 8),
+              // 🔹 Checklist visual que se actualiza en vivo
+              PasswordStrengthChecklist(password: passwordController.text),
+
               SizedBox(height: 10),
               // Texto forgot password
               SizedBox(
@@ -238,8 +279,23 @@ class _LoginScreenState extends State<LoginScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                onPressed: _onlogin,
-                child: Text('Login', style: TextStyle(color: Colors.white)),
+                // _isLoading: controla si se muestra el texto
+                // CircularProgressIndicator: muestra el indicador giratorio
+                onPressed:
+                    _isLoading ? null : _onlogin, // Desactiva mientras carga
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.black,
+                          strokeWidth: 3, // strokeWidth:. Grosor de la línea
+                        ),
+                      )
+                    : const Text(
+                        'Login',
+                        style: TextStyle(color: Colors.white),
+                      ),
               ),
               const SizedBox(height: 10),
               SizedBox(
@@ -277,7 +333,56 @@ class _LoginScreenState extends State<LoginScreen> {
     _userPasswordController.dispose();
     emailFocus.dispose();
     passwordFocus.dispose();
-    _typingDebouncer?.cancel();
+    _typingDebouncer?.cancel(); //3.4
     super.dispose();
+  }
+}
+
+//6.7 Correción de errores de la contraseña en vivo
+class PasswordStrengthChecklist extends StatelessWidget {
+  final String password;
+  const PasswordStrengthChecklist({super.key, required this.password});
+
+  bool get upper => password.contains(RegExp(r'[A-Z]'));
+  bool get lower => password.contains(RegExp(r'[a-z]'));
+  bool get number => password.contains(RegExp(r'\d'));
+  bool get special => password.contains(RegExp(r'[^A-Za-z0-9]'));
+  bool get min => password.length >= 8;
+
+  Widget _buildItem(String text, bool condition) {
+    return Row(
+      children: [
+        Icon(
+          condition ? Icons.check_circle : Icons.cancel,
+          color: condition ? Colors.green : Colors.red,
+          size: 18,
+        ),
+        const SizedBox(width: 8),
+        Text(
+          text,
+          style: TextStyle(
+            color: condition ? Colors.green : Colors.red,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (password.isEmpty) {
+      return const SizedBox(); // Oculta mientras no escriba nada
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildItem("Al menos 8 caracteres", min),
+        _buildItem("Una letra mayúscula", upper),
+        _buildItem("Una letra minúscula", lower),
+        _buildItem("Un número", number),
+        _buildItem("Un símbolo o carácter especial", special),
+      ],
+    );
   }
 }
